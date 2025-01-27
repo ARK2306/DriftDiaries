@@ -3,9 +3,10 @@ import styles from "./PageNav.module.css";
 import Logo from "./Logo";
 import { useAuth } from "../contexts/AuthContext";
 import Button from "./Button";
+import { signOut } from "../lib/supabaseAuth";
 
 function PageNav() {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   function handleSubmit() {
     navigate("/login");
@@ -17,7 +18,7 @@ function PageNav() {
       <ul>
         <li>
           {isAuthenticated ? (
-            <Button onClick={logout} type="primary">
+            <Button onClick={signOut} type="primary">
               Logout
             </Button>
           ) : (

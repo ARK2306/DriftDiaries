@@ -6,7 +6,7 @@ function Logo() {
     <Link to="/">
       <img
         src="/logo.png"
-        alt="WorldWise logo"
+        alt="logo"
         className={styles.logo}
         onError={(e) => {
           console.error("Logo failed to load:", e);
