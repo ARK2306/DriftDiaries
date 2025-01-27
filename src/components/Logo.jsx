@@ -5,14 +5,9 @@ function Logo() {
   return (
     <Link to="/">
       <img
-        src="/logo.png"
-        alt="logo"
+        src="/logo.png" // This will look for logo.png in the public folder
+        alt="dd logo"
         className={styles.logo}
-        onError={(e) => {
-          console.error("Logo failed to load:", e);
-          e.target.onerror = null; // Prevent infinite loop
-          e.target.src = "https://placehold.co/200x50?text=WorldWise"; // Fallback image
-        }}
       />
     </Link>
   );
