@@ -1,5 +1,7 @@
+// src/contexts/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { signOut } from "../lib/supabaseAuth";
 import Spinner from "../components/Spinner";
 
 const AuthContext = createContext({});
@@ -121,6 +123,8 @@ export function AuthProvider({ children }) {
         if (mounted) {
           setError(error.message);
         }
+      } finally {
+        setLoading(false);
       }
     });
 
@@ -131,33 +135,19 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  async function logout() {
+  // Use the signOut function from supabaseAuth.js
+  const logout = async () => {
     try {
-      console.log("Starting logout process...");
       setLoading(true);
-
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-
-      console.log("Supabase signOut successful");
-
-      // Clear all auth state
-      setUser(null);
-      setProfile(null);
-
-      // Clear any local storage items if you have any
-      localStorage.removeItem("supabase.auth.token");
-
-      console.log("Auth state cleared");
-      return { error: null };
+      return await signOut();
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("Error in logout:", error);
       setError(error.message);
       return { error };
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   console.log("Auth state:", { loading, user, profile, error });
 

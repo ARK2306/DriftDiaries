@@ -1,23 +1,19 @@
 // src/components/User.jsx
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import styles from "./User.module.css";
+import { signOut } from "../lib/supabaseAuth";
 
 function User() {
-  const { profile, logout } = useAuth();
-  const navigate = useNavigate();
+  const { profile } = useAuth();
 
-  async function handleLogout(e) {
-    e.preventDefault();
+  const handleLogout = async () => {
     try {
-      console.log("Initiating logout...");
-      await logout();
-      console.log("Logout successful, navigating to homepage");
-      navigate("/");
+      const { error } = await signOut();
+      if (error) throw error;
     } catch (error) {
       console.error("Logout error:", error);
     }
-  }
+  };
 
   if (!profile) return null;
 
