@@ -5,8 +5,8 @@ function Logo() {
   return (
     <Link to="/">
       <img
-        src="public/logo.png" // This will look for logo.png in the public folder
-        alt="dd logo"
+        src="logo.png" // This will look for logo.png in the public folder
+        alt="drift diaries logo"
         className={styles.logo}
       />
     </Link>
