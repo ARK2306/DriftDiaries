@@ -4,6 +4,11 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+const REDIRECT_URL =
+  process.env.NODE_ENV === "production"
+    ? "https://drift-diaries.vercel.app/app/cities" // Replace with your Vercel URL
+    : "http://localhost:5173/app/cities";
+
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true,
@@ -74,7 +79,7 @@ export const authUtils = {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/app`,
+          redirectTo: REDIRECT_URL,
         },
       });
       return { data, error };
