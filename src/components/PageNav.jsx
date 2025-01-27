@@ -11,7 +11,7 @@ function PageNav() {
     <nav className={styles.nav}>
       <div className={styles.logoContainer}>
         <img
-          src="/images/logo.png"
+          src="/logo.png" // Direct reference to public folder
           alt="DriftDiaries"
           className={styles.logo}
         />
