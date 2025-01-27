@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import Spinner from "../components/Spinner";
-import { authUtils } from "../lib/supabase";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -11,24 +10,17 @@ function ProtectedRoute({ children }) {
   const location = useLocation();
 
   useEffect(() => {
-    async function handleRedirect() {
-      // Check if we have a hash in the URL (OAuth redirect)
-      if (location.hash && location.hash.includes("access_token")) {
-        const { session, error } = await authUtils.handleAuthRedirect();
-        if (error || !session) {
-          console.error("Auth redirect error:", error);
-          navigate("/login", { replace: true });
-          return;
-        }
-      }
+    // If we're still loading, don't do anything yet
+    if (loading) return;
 
-      // Normal authentication check
-      if (!loading && !user) {
-        navigate("/login", { replace: true });
-      }
+    // If user is not authenticated and we're done loading, redirect to login
+    if (!user) {
+      navigate("/login", { replace: true });
+    } else if (location.hash) {
+      // If we have a hash (from OAuth redirect) and we're authenticated,
+      // clean up the URL by removing the hash
+      navigate(location.pathname, { replace: true });
     }
-
-    handleRedirect();
   }, [user, loading, navigate, location]);
 
   if (loading) {

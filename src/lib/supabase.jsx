@@ -4,9 +4,6 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const SITE_URL = import.meta.env.VITE_SITE_URL || "http://localhost:5173";
-const REDIRECT_URL = `${SITE_URL}/app/cities`;
-
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true,
@@ -77,10 +74,10 @@ export const authUtils = {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: REDIRECT_URL,
+          redirectTo: `${window.location.origin}/app/cities`,
           queryParams: {
-            access_type: "offline",
-            prompt: "consent",
+            prompt: "select_account", // Forces Google to show account selector
+            access_type: "offline", // Needed for refresh token
           },
         },
       });
@@ -93,6 +90,7 @@ export const authUtils = {
     }
   },
 
+  // Handle auth redirect
   handleAuthRedirect: async () => {
     try {
       const {
@@ -106,6 +104,22 @@ export const authUtils = {
       return { session: null, error };
     }
   },
+
+  // Get current session
+  getCurrentSession: async () => {
+    try {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+      if (error) throw error;
+      return { session, error: null };
+    } catch (error) {
+      console.error("Get Session Error:", error);
+      return { session: null, error };
+    }
+  },
+
   // Sign out
   signOut: async () => {
     try {
