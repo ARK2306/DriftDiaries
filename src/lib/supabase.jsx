@@ -4,10 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const REDIRECT_URL =
-  process.env.NODE_ENV === "production"
-    ? "https://drift-diaries.vercel.app/app/cities" // Replace with your Vercel URL
-    : "http://localhost:5173/app/cities";
+const SITE_URL = import.meta.env.VITE_SITE_URL || "http://localhost:5173";
+const REDIRECT_URL = `${SITE_URL}/app/cities`;
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
@@ -80,14 +78,34 @@ export const authUtils = {
         provider: "google",
         options: {
           redirectTo: REDIRECT_URL,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
       });
-      return { data, error };
+
+      if (error) throw error;
+      return { data, error: null };
     } catch (error) {
+      console.error("Google Sign In Error:", error);
       return { data: null, error };
     }
   },
 
+  handleAuthRedirect: async () => {
+    try {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+      if (error) throw error;
+      return { session, error: null };
+    } catch (error) {
+      console.error("Auth Redirect Error:", error);
+      return { session: null, error };
+    }
+  },
   // Sign out
   signOut: async () => {
     try {
