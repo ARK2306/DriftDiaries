@@ -9,19 +9,68 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Handle initial session and auth state changes
+  async function fetchProfile(userId) {
+    try {
+      // Check if userId exists
+      if (!userId) {
+        console.log("No user ID provided to fetch profile");
+        return;
+      }
+
+      console.log("Fetching profile for user:", userId);
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          // Profile doesn't exist, create one
+          const { data: userData } = await supabase.auth.getUser();
+          const {
+            user: { user_metadata },
+          } = userData;
+
+          const newProfile = {
+            id: userId,
+            username: user_metadata.name || user_metadata.email,
+            full_name: user_metadata.full_name || user_metadata.name,
+            avatar_url: user_metadata.avatar_url || user_metadata.picture,
+            updated_at: new Date().toISOString(),
+          };
+
+          const { data: createdProfile, error: createError } = await supabase
+            .from("profiles")
+            .insert([newProfile])
+            .select()
+            .single();
+
+          if (createError) throw createError;
+
+          setProfile(createdProfile);
+          return;
+        }
+        throw error;
+      }
+
+      setProfile(data);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      setProfile(null);
+    }
+  }
+
   useEffect(() => {
-    // First, check for an existing session
     const initializeAuth = async () => {
       try {
-        // Get current session
         const {
           data: { session },
         } = await supabase.auth.getSession();
 
         if (session?.user) {
           setUser(session.user);
-          // Fetch user profile after setting user
           await fetchProfile(session.user.id);
         }
       } catch (error) {
@@ -33,7 +82,6 @@ export function AuthProvider({ children }) {
 
     initializeAuth();
 
-    // Subscribe to auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -54,22 +102,6 @@ export function AuthProvider({ children }) {
       subscription?.unsubscribe();
     };
   }, []);
-
-  async function fetchProfile(userId) {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      if (error) throw error;
-      setProfile(data);
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-      setProfile(null);
-    }
-  }
 
   async function logout() {
     try {
