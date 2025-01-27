@@ -1,4 +1,3 @@
-// src/components/ProtectedRoute.jsx
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -10,24 +9,28 @@ function ProtectedRoute({ children }) {
   const location = useLocation();
 
   useEffect(() => {
-    // If we're still loading, don't do anything yet
-    if (loading) return;
+    console.log("ProtectedRoute effect running:", { user, loading });
 
-    // If user is not authenticated and we're done loading, redirect to login
-    if (!user) {
+    if (!loading && !user) {
+      console.log("No user found, redirecting to login");
       navigate("/login", { replace: true });
-    } else if (location.hash) {
-      // If we have a hash (from OAuth redirect) and we're authenticated,
-      // clean up the URL by removing the hash
-      navigate(location.pathname, { replace: true });
     }
-  }, [user, loading, navigate, location]);
+  }, [user, loading, navigate]);
 
-  if (loading) {
+  // Show spinner only during initial load
+  if (loading && !user) {
+    console.log("ProtectedRoute showing spinner");
     return <Spinner />;
   }
 
-  return user ? children : null;
+  // If we have a user, render the protected content
+  if (user) {
+    console.log("ProtectedRoute rendering protected content");
+    return children;
+  }
+
+  // If we're not loading and have no user, return null (redirect will handle it)
+  return null;
 }
 
 export default ProtectedRoute;

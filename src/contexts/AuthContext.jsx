@@ -18,12 +18,11 @@ export function AuthProvider({ children }) {
         .from("profiles")
         .select("*")
         .eq("id", userId)
-        .maybeSingle(); // Use maybeSingle instead of single to avoid errors
+        .maybeSingle();
 
       if (error) throw error;
 
       if (!data) {
-        // Profile doesn't exist, create one
         console.log("Creating new profile for user:", userId);
         const { data: userData } = await supabase.auth.getUser();
         const {
@@ -42,27 +41,32 @@ export function AuthProvider({ children }) {
           .from("profiles")
           .upsert([newProfile])
           .select()
-          .single();
+          .maybeSingle();
 
         if (createError) throw createError;
 
-        setProfile(createdProfile);
-        return;
+        console.log("Created new profile:", createdProfile);
+        return createdProfile;
       }
 
-      setProfile(data);
+      console.log("Found existing profile:", data);
+      return data;
     } catch (error) {
       console.error("Error in fetchProfile:", error);
       setError(error.message);
+      return null;
     }
   }
 
   useEffect(() => {
+    let mounted = true;
     console.log("AuthProvider mounted");
 
     const initializeAuth = async () => {
       try {
         console.log("Initializing auth...");
+        setLoading(true);
+
         const {
           data: { session },
           error: sessionError,
@@ -72,15 +76,23 @@ export function AuthProvider({ children }) {
 
         console.log("Session:", session);
 
-        if (session?.user) {
+        if (session?.user && mounted) {
           setUser(session.user);
-          await fetchProfile(session.user.id);
+          const profileData = await fetchProfile(session.user.id);
+          if (mounted) {
+            setProfile(profileData);
+          }
         }
       } catch (error) {
         console.error("Error in initializeAuth:", error);
-        setError(error.message);
+        if (mounted) {
+          setError(error.message);
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          console.log("Setting loading to false");
+          setLoading(false);
+        }
       }
     };
 
@@ -91,23 +103,29 @@ export function AuthProvider({ children }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event, session);
 
+      if (!mounted) return;
+
       try {
         if (session?.user) {
           setUser(session.user);
-          await fetchProfile(session.user.id);
+          const profileData = await fetchProfile(session.user.id);
+          if (mounted) {
+            setProfile(profileData);
+          }
         } else {
           setUser(null);
           setProfile(null);
         }
       } catch (error) {
         console.error("Error in auth state change:", error);
-        setError(error.message);
-      } finally {
-        setLoading(false);
+        if (mounted) {
+          setError(error.message);
+        }
       }
     });
 
     return () => {
+      mounted = false;
       console.log("Cleaning up auth subscription");
       subscription?.unsubscribe();
     };
@@ -115,6 +133,7 @@ export function AuthProvider({ children }) {
 
   async function logout() {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       setUser(null);
@@ -122,15 +141,15 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error("Error in logout:", error);
       setError(error.message);
+    } finally {
+      setLoading(false);
     }
   }
 
-  if (error) {
-    console.error("Auth error:", error);
-    return <div>Error: {error}</div>;
-  }
+  console.log("Auth state:", { loading, user, profile, error });
 
-  if (loading) {
+  // Only show spinner for initial load
+  if (loading && !user && !profile) {
     return <Spinner />;
   }
 
