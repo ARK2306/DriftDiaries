@@ -133,14 +133,27 @@ export function AuthProvider({ children }) {
 
   async function logout() {
     try {
+      console.log("Starting logout process...");
       setLoading(true);
+
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+
+      console.log("Supabase signOut successful");
+
+      // Clear all auth state
       setUser(null);
       setProfile(null);
+
+      // Clear any local storage items if you have any
+      localStorage.removeItem("supabase.auth.token");
+
+      console.log("Auth state cleared");
+      return { error: null };
     } catch (error) {
-      console.error("Error in logout:", error);
+      console.error("Logout error:", error);
       setError(error.message);
+      return { error };
     } finally {
       setLoading(false);
     }
