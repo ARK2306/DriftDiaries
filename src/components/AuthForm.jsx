@@ -8,6 +8,7 @@ import Message from "./Message";
 const AuthForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -116,15 +117,29 @@ const AuthForm = () => {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <input
-            className="input"
-            name="password"
-            placeholder="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div className="password-container">
+            <input
+              className="input"
+              name="password"
+              placeholder="Password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <button
+              type="button"
+              className="toggle-password"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? (
+                <EyeOff className="icon" size={20} />
+              ) : (
+                <Eye className="icon" size={20} />
+              )}
+            </button>
+          </div>
 
           {error && <div className="error">{error}</div>}
 
@@ -191,6 +206,34 @@ const StyledWrapper = styled.div`
     width: 100%;
     max-width: 400px;
     padding: 20px;
+  }
+  .password-container {
+    position: relative;
+    width: 100%;
+  }
+
+  .toggle-password {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: var(--font-color-sub);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+
+    &:hover {
+      color: var(--font-color);
+    }
+
+    .icon {
+      stroke-width: 1.5px;
+    }
   }
 
   .form {

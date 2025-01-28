@@ -10,9 +10,9 @@ const Card = () => {
         <div className="notititle">Welcome To Drift Diaries</div>
         <div className="notibody">
           Use the following credentials if you would like to use the app:{" "}
+          <p>Email: guest@dd.com </p>
+          <p>Password:DD@123456</p>
         </div>
-        <p>Email: guest@v.com </p>
-        <p>Password:DD@123456</p>
       </div>
     </StyledWrapper>
   );
