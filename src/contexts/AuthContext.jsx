@@ -12,9 +12,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Improved profile fetching with better error handling and caching
   async function fetchProfile(userId) {
     try {
-      console.log("Fetching profile for user:", userId);
+      // Check if we already have the profile cached
+      if (profile?.id === userId) return profile;
 
       const { data, error } = await supabase
         .from("profiles")
@@ -25,7 +27,6 @@ export function AuthProvider({ children }) {
       if (error) throw error;
 
       if (!data) {
-        console.log("Creating new profile for user:", userId);
         const { data: userData } = await supabase.auth.getUser();
         const {
           user: { user_metadata },
@@ -46,12 +47,9 @@ export function AuthProvider({ children }) {
           .maybeSingle();
 
         if (createError) throw createError;
-
-        console.log("Created new profile:", createdProfile);
         return createdProfile;
       }
 
-      console.log("Found existing profile:", data);
       return data;
     } catch (error) {
       console.error("Error in fetchProfile:", error);
@@ -62,84 +60,68 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let mounted = true;
-    console.log("AuthProvider mounted");
 
     const initializeAuth = async () => {
       try {
-        console.log("Initializing auth...");
         setLoading(true);
 
+        // Get initial session
         const {
           data: { session },
           error: sessionError,
         } = await supabase.auth.getSession();
-
         if (sessionError) throw sessionError;
-
-        console.log("Session:", session);
 
         if (session?.user && mounted) {
           setUser(session.user);
           const profileData = await fetchProfile(session.user.id);
-          if (mounted) {
-            setProfile(profileData);
-          }
+          if (mounted) setProfile(profileData);
         }
       } catch (error) {
         console.error("Error in initializeAuth:", error);
-        if (mounted) {
-          setError(error.message);
-        }
+        if (mounted) setError(error.message);
       } finally {
-        if (mounted) {
-          console.log("Setting loading to false");
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     };
 
-    initializeAuth();
-
+    // Set up auth state change listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event, session);
-
       if (!mounted) return;
 
       try {
         if (session?.user) {
           setUser(session.user);
           const profileData = await fetchProfile(session.user.id);
-          if (mounted) {
-            setProfile(profileData);
-          }
+          if (mounted) setProfile(profileData);
         } else {
           setUser(null);
           setProfile(null);
         }
       } catch (error) {
         console.error("Error in auth state change:", error);
-        if (mounted) {
-          setError(error.message);
-        }
+        if (mounted) setError(error.message);
       } finally {
         setLoading(false);
       }
     });
 
+    initializeAuth();
+
     return () => {
       mounted = false;
-      console.log("Cleaning up auth subscription");
       subscription?.unsubscribe();
     };
   }, []);
 
-  // Use the signOut function from supabaseAuth.js
   const logout = async () => {
     try {
       setLoading(true);
-      return await signOut();
+      const { error } = await signOut();
+      if (error) throw error;
+      return { error: null };
     } catch (error) {
       console.error("Error in logout:", error);
       setError(error.message);
@@ -148,8 +130,6 @@ export function AuthProvider({ children }) {
       setLoading(false);
     }
   };
-
-  console.log("Auth state:", { loading, user, profile, error });
 
   // Only show spinner for initial load
   if (loading && !user && !profile) {
