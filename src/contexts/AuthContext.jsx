@@ -29,45 +29,69 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id).then((profile) => setProfile(profile));
-      }
-      setLoading(false);
-    });
+    let mounted = true;
 
-    // Listen for changes
+    async function initializeAuth() {
+      try {
+        // Get initial session
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error) throw error;
+
+        if (session?.user && mounted) {
+          setUser(session.user);
+          const profile = await fetchProfile(session.user.id);
+          if (mounted) setProfile(profile);
+        }
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    initializeAuth();
+
+    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null);
+      if (!mounted) return;
+
       if (session?.user) {
+        setUser(session.user);
         const profile = await fetchProfile(session.user.id);
-        setProfile(profile);
+        if (mounted) setProfile(profile);
       } else {
+        setUser(null);
         setProfile(null);
       }
-      setLoading(false);
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
 
   const logout = async () => {
     try {
+      setLoading(true);
       const { error } = await signOut();
       if (error) throw error;
     } catch (error) {
       console.error("Error during logout:", error);
       setError(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) {
+  // Show spinner only during initial load
+  if (loading && !user && !profile) {
     return <Spinner />;
   }
 
