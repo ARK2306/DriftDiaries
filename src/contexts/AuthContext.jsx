@@ -4,29 +4,32 @@ import { supabase } from "../lib/supabase";
 import { signOut } from "../lib/supabaseAuth";
 import Spinner from "../components/Spinner";
 
-const STORAGE_KEY = "sb-uqpzvnyzkgfxdqqeirus-auth-token";
-
 const AuthContext = createContext({});
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    // Try to get user from localStorage on initial render
-    const storedSession = localStorage.getItem(STORAGE_KEY);
-    if (storedSession) {
+    // Try to get session from localStorage
+    const persistedSession = localStorage.getItem(
+      "sb-uqpzvnyzkgfxdqqeirus-auth-token"
+    );
+    if (persistedSession) {
       try {
-        const { user } = JSON.parse(storedSession);
-        return user;
-      } catch (e) {
+        const parsedSession = JSON.parse(persistedSession);
+        return parsedSession.user || null;
+      } catch (error) {
+        console.error("Error parsing stored session:", error);
         return null;
       }
     }
     return null;
   });
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!user); // Only show loading if no initial user
   const [error, setError] = useState(null);
 
   async function fetchProfile(userId) {
+    if (!userId) return null;
+
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -42,65 +45,35 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // Load initial profile if we have a user
   useEffect(() => {
-    let mounted = true;
+    if (user && !profile) {
+      fetchProfile(user.id).then((data) => setProfile(data));
+    }
+  }, [user]);
 
-    const initializeAuth = async () => {
-      try {
-        // Get current session
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (session?.user && mounted) {
-          setUser(session.user);
-          const profileData = await fetchProfile(session.user.id);
-          if (mounted) setProfile(profileData);
-        } else if (!session && mounted) {
-          // Clear state if no session
-          setUser(null);
-          setProfile(null);
-        }
-      } catch (error) {
-        console.error("Auth initialization error:", error);
-        if (mounted) setError(error.message);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    initializeAuth();
-
+  useEffect(() => {
     // Set up auth state change listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-
       console.log("Auth state changed:", event, session?.user?.id);
 
       if (session?.user) {
         setUser(session.user);
         const profileData = await fetchProfile(session.user.id);
-        if (mounted) setProfile(profileData);
+        setProfile(profileData);
       } else {
         setUser(null);
         setProfile(null);
       }
+      setLoading(false);
     });
 
     return () => {
-      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
-
-  // If we have a user but no profile, fetch it
-  useEffect(() => {
-    if (user?.id && !profile) {
-      fetchProfile(user.id).then((data) => setProfile(data));
-    }
-  }, [user]);
 
   const logout = async () => {
     try {
@@ -108,7 +81,6 @@ export function AuthProvider({ children }) {
       const { error } = await signOut();
       if (error) throw error;
 
-      // Clear state
       setUser(null);
       setProfile(null);
     } catch (error) {
@@ -119,8 +91,8 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Only show spinner during initial load
-  if (loading && !user && !profile) {
+  // Only show spinner if we're loading and don't have a user yet
+  if (loading && !user) {
     return <Spinner />;
   }
 
