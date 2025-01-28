@@ -2,6 +2,21 @@
   "version": 2,
   "routes": [
     {
+      "src": "/images/(.*)",
+      "headers": { "cache-control": "s-maxage=604800" },
+      "dest": "/images/$1"
+    },
+    {
+      "src": "/(.*).png",
+      "headers": { "cache-control": "s-maxage=604800" },
+      "dest": "/$1.png"
+    },
+    {
+      "src": "/(.*).jpg",
+      "headers": { "cache-control": "s-maxage=604800" },
+      "dest": "/$1.jpg"
+    },
+    {
       "src": "/assets/(.*)",
       "dest": "/assets/$1"
     },
