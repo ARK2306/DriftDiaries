@@ -14,16 +14,19 @@ import Spinner from "../components/Spinner";
 const AuthContext = createContext({});
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    // Try to get initial user from localStorage
+    const storedSession = localStorage.getItem("supabase.auth.token");
+    return storedSession ? JSON.parse(storedSession).user : null;
+  });
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Memoize fetchProfile to prevent recreating on every render
   const fetchProfile = useCallback(
     async (userId) => {
       try {
-        // Check if we already have the profile cached
+        // Check if we already have the profile cached and it matches the current user
         if (profile?.id === userId) return profile;
 
         const { data, error } = await supabase
@@ -68,31 +71,15 @@ export function AuthProvider({ children }) {
     [profile]
   );
 
-  // Memoize logout to prevent recreating on every render
-  const logout = useCallback(async () => {
-    try {
-      setLoading(true);
-      const { error } = await signOut();
-      if (error) throw error;
-      return { error: null };
-    } catch (error) {
-      console.error("Error in logout:", error);
-      setError(error.message);
-      return { error };
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  // Initialize auth state
   useEffect(() => {
     let mounted = true;
 
     const initializeAuth = async () => {
-      if (!mounted) return;
-
       try {
         setLoading(true);
 
+        // First try to get the session
         const {
           data: { session },
           error: sessionError,
@@ -102,8 +89,18 @@ export function AuthProvider({ children }) {
 
         if (session?.user && mounted) {
           setUser(session.user);
+          // Store session in localStorage
+          localStorage.setItem(
+            "supabase.auth.token",
+            JSON.stringify({ user: session.user })
+          );
           const profileData = await fetchProfile(session.user.id);
           if (mounted) setProfile(profileData);
+        } else if (!session && mounted) {
+          // Clear stored data if no session
+          localStorage.removeItem("supabase.auth.token");
+          setUser(null);
+          setProfile(null);
         }
       } catch (error) {
         console.error("Error in initializeAuth:", error);
@@ -115,17 +112,27 @@ export function AuthProvider({ children }) {
 
     initializeAuth();
 
+    // Set up auth state change listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
+      console.log("Auth state changed:", event, session);
+
       try {
         if (session?.user) {
           setUser(session.user);
+          // Update stored session
+          localStorage.setItem(
+            "supabase.auth.token",
+            JSON.stringify({ user: session.user })
+          );
           const profileData = await fetchProfile(session.user.id);
           if (mounted) setProfile(profileData);
         } else {
+          // Clear stored data on signout
+          localStorage.removeItem("supabase.auth.token");
           setUser(null);
           setProfile(null);
         }
@@ -141,9 +148,26 @@ export function AuthProvider({ children }) {
       mounted = false;
       subscription?.unsubscribe();
     };
-  }, [fetchProfile]); // Add fetchProfile to dependencies
+  }, [fetchProfile]);
 
-  // Memoize the context value to prevent unnecessary re-renders
+  const logout = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { error } = await signOut();
+      if (error) throw error;
+
+      // Clear stored data on logout
+      localStorage.removeItem("supabase.auth.token");
+      return { error: null };
+    } catch (error) {
+      console.error("Error in logout:", error);
+      setError(error.message);
+      return { error };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const contextValue = useMemo(
     () => ({
       user,
@@ -156,7 +180,6 @@ export function AuthProvider({ children }) {
     [user, profile, loading, error, logout]
   );
 
-  // Only show spinner for initial load
   if (loading && !user && !profile) {
     return <Spinner />;
   }
