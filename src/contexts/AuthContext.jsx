@@ -1,5 +1,12 @@
 // src/contexts/AuthContext.jsx
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+} from "react";
 import { supabase } from "../lib/supabase";
 import { signOut } from "../lib/supabaseAuth";
 import Spinner from "../components/Spinner";
@@ -12,64 +19,85 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Improved profile fetching with better error handling and caching
-  async function fetchProfile(userId) {
-    try {
-      // Check if we already have the profile cached
-      if (profile?.id === userId) return profile;
+  // Memoize fetchProfile to prevent recreating on every render
+  const fetchProfile = useCallback(
+    async (userId) => {
+      try {
+        // Check if we already have the profile cached
+        if (profile?.id === userId) return profile;
 
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (!data) {
-        const { data: userData } = await supabase.auth.getUser();
-        const {
-          user: { user_metadata },
-        } = userData;
-
-        const newProfile = {
-          id: userId,
-          username: user_metadata.name || user_metadata.email,
-          full_name: user_metadata.full_name || user_metadata.name,
-          avatar_url: user_metadata.avatar_url || user_metadata.picture,
-          updated_at: new Date().toISOString(),
-        };
-
-        const { data: createdProfile, error: createError } = await supabase
+        const { data, error } = await supabase
           .from("profiles")
-          .upsert([newProfile])
-          .select()
+          .select("*")
+          .eq("id", userId)
           .maybeSingle();
 
-        if (createError) throw createError;
-        return createdProfile;
-      }
+        if (error) throw error;
 
-      return data;
+        if (!data) {
+          const { data: userData } = await supabase.auth.getUser();
+          const {
+            user: { user_metadata },
+          } = userData;
+
+          const newProfile = {
+            id: userId,
+            username: user_metadata.name || user_metadata.email,
+            full_name: user_metadata.full_name || user_metadata.name,
+            avatar_url: user_metadata.avatar_url || user_metadata.picture,
+            updated_at: new Date().toISOString(),
+          };
+
+          const { data: createdProfile, error: createError } = await supabase
+            .from("profiles")
+            .upsert([newProfile])
+            .select()
+            .maybeSingle();
+
+          if (createError) throw createError;
+          return createdProfile;
+        }
+
+        return data;
+      } catch (error) {
+        console.error("Error in fetchProfile:", error);
+        setError(error.message);
+        return null;
+      }
+    },
+    [profile]
+  );
+
+  // Memoize logout to prevent recreating on every render
+  const logout = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { error } = await signOut();
+      if (error) throw error;
+      return { error: null };
     } catch (error) {
-      console.error("Error in fetchProfile:", error);
+      console.error("Error in logout:", error);
       setError(error.message);
-      return null;
+      return { error };
+    } finally {
+      setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
 
     const initializeAuth = async () => {
+      if (!mounted) return;
+
       try {
         setLoading(true);
 
-        // Get initial session
         const {
           data: { session },
           error: sessionError,
         } = await supabase.auth.getSession();
+
         if (sessionError) throw sessionError;
 
         if (session?.user && mounted) {
@@ -85,7 +113,8 @@ export function AuthProvider({ children }) {
       }
     };
 
-    // Set up auth state change listener
+    initializeAuth();
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -104,32 +133,28 @@ export function AuthProvider({ children }) {
         console.error("Error in auth state change:", error);
         if (mounted) setError(error.message);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     });
-
-    initializeAuth();
 
     return () => {
       mounted = false;
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [fetchProfile]); // Add fetchProfile to dependencies
 
-  const logout = async () => {
-    try {
-      setLoading(true);
-      const { error } = await signOut();
-      if (error) throw error;
-      return { error: null };
-    } catch (error) {
-      console.error("Error in logout:", error);
-      setError(error.message);
-      return { error };
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo(
+    () => ({
+      user,
+      profile,
+      loading,
+      error,
+      logout,
+      isAuthenticated: !!user,
+    }),
+    [user, profile, loading, error, logout]
+  );
 
   // Only show spinner for initial load
   if (loading && !user && !profile) {
@@ -137,18 +162,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        profile,
-        loading,
-        error,
-        logout,
-        isAuthenticated: !!user,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
   );
 }
 
