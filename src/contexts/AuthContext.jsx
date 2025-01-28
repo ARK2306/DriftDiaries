@@ -4,10 +4,24 @@ import { supabase } from "../lib/supabase";
 import { signOut } from "../lib/supabaseAuth";
 import Spinner from "../components/Spinner";
 
+const STORAGE_KEY = "sb-uqpzvnyzkgfxdqqeirus-auth-token";
+
 const AuthContext = createContext({});
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => supabase.auth.getSession() || null);
+  const [user, setUser] = useState(() => {
+    // Try to get user from localStorage on initial render
+    const storedSession = localStorage.getItem(STORAGE_KEY);
+    if (storedSession) {
+      try {
+        const { user } = JSON.parse(storedSession);
+        return user;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,49 +45,44 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    const initialize = async () => {
+    const initializeAuth = async () => {
       try {
+        // Get current session
         const {
           data: { session },
         } = await supabase.auth.getSession();
 
         if (session?.user && mounted) {
-          console.log("Found session, setting user:", session.user);
           setUser(session.user);
-          const profile = await fetchProfile(session.user.id);
-          if (mounted) {
-            console.log("Setting profile:", profile);
-            setProfile(profile);
-          }
-        } else {
-          console.log("No session found");
+          const profileData = await fetchProfile(session.user.id);
+          if (mounted) setProfile(profileData);
+        } else if (!session && mounted) {
+          // Clear state if no session
           setUser(null);
           setProfile(null);
         }
       } catch (error) {
-        console.error("Initialization error:", error);
-        setError(error.message);
+        console.error("Auth initialization error:", error);
+        if (mounted) setError(error.message);
       } finally {
-        if (mounted) {
-          console.log("Setting loading to false");
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     };
 
-    initialize();
+    initializeAuth();
 
+    // Set up auth state change listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
-      console.log("Auth state changed:", event, session);
+      console.log("Auth state changed:", event, session?.user?.id);
 
       if (session?.user) {
         setUser(session.user);
-        const profile = await fetchProfile(session.user.id);
-        if (mounted) setProfile(profile);
+        const profileData = await fetchProfile(session.user.id);
+        if (mounted) setProfile(profileData);
       } else {
         setUser(null);
         setProfile(null);
@@ -81,28 +90,36 @@ export function AuthProvider({ children }) {
     });
 
     return () => {
-      console.log("Cleaning up auth subscription");
       mounted = false;
       subscription.unsubscribe();
     };
   }, []);
+
+  // If we have a user but no profile, fetch it
+  useEffect(() => {
+    if (user?.id && !profile) {
+      fetchProfile(user.id).then((data) => setProfile(data));
+    }
+  }, [user]);
 
   const logout = async () => {
     try {
       setLoading(true);
       const { error } = await signOut();
       if (error) throw error;
+
+      // Clear state
       setUser(null);
       setProfile(null);
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("Error during logout:", error);
       setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Only show spinner for initial load
+  // Only show spinner during initial load
   if (loading && !user && !profile) {
     return <Spinner />;
   }
@@ -115,8 +132,6 @@ export function AuthProvider({ children }) {
     logout,
     isAuthenticated: !!user,
   };
-
-  console.log("Current auth state:", value);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
