@@ -4,19 +4,19 @@ import styles from "./PageNav.module.css";
 import { useAuth } from "../contexts/AuthContext";
 import Logo from "./Logo";
 import Button from "./Button";
+import { signOut } from "../lib/supabaseAuth";
 function PageNav() {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  async function handleLogout() {
+  const handleLogout = async () => {
     try {
-      const { error } = await logout;
+      const { error } = await signOut();
       if (error) throw error;
-      navigate("/");
     } catch (error) {
-      console.error("Error logging out:", error);
+      console.error("Logout error:", error);
     }
-  }
+  };
 
   function handleLogin() {
     navigate("/login");
