@@ -1,7 +1,7 @@
 import PageNav from "../components/PageNav";
 import AuthForm from "../components/AuthForm";
 import Card from "./card";
-import styles from "./LoginPage.module.css";
+import styles from "./Login.module.css";
 
 const Login = () => {
   return (
