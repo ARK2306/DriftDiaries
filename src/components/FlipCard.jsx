@@ -193,7 +193,7 @@ const StyledWrapper = styled.div`
   }
 
   .title {
-    font-size: 10px;
+    font-size: 7px;
     font-family: "Courier New", monospace;
     max-width: 100%;
     line-height: 1.5;
