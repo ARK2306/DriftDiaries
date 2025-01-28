@@ -1,13 +1,14 @@
 // src/components/User.jsx
 import { useAuth } from "../contexts/AuthContext";
 import styles from "./User.module.css";
+import { signOut } from "../lib/supabaseAuth";
 
 function User() {
-  const { profile, logout } = useAuth();
+  const { profile } = useAuth();
 
   const handleLogout = async () => {
     try {
-      const { error } = await logout;
+      const { error } = await signOut();
       if (error) throw error;
     } catch (error) {
       console.error("Logout error:", error);
