@@ -7,7 +7,7 @@ import Spinner from "../components/Spinner";
 const AuthContext = createContext({});
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => supabase.auth.getSession() || null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,35 +31,44 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    async function initializeAuth() {
+    const initialize = async () => {
       try {
-        // Get initial session
         const {
           data: { session },
-          error,
         } = await supabase.auth.getSession();
 
-        if (error) throw error;
-
         if (session?.user && mounted) {
+          console.log("Found session, setting user:", session.user);
           setUser(session.user);
           const profile = await fetchProfile(session.user.id);
-          if (mounted) setProfile(profile);
+          if (mounted) {
+            console.log("Setting profile:", profile);
+            setProfile(profile);
+          }
+        } else {
+          console.log("No session found");
+          setUser(null);
+          setProfile(null);
         }
       } catch (error) {
-        console.error("Auth initialization error:", error);
+        console.error("Initialization error:", error);
+        setError(error.message);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          console.log("Setting loading to false");
+          setLoading(false);
+        }
       }
-    }
+    };
 
-    initializeAuth();
+    initialize();
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
+
+      console.log("Auth state changed:", event, session);
 
       if (session?.user) {
         setUser(session.user);
@@ -72,6 +81,7 @@ export function AuthProvider({ children }) {
     });
 
     return () => {
+      console.log("Cleaning up auth subscription");
       mounted = false;
       subscription.unsubscribe();
     };
@@ -82,15 +92,17 @@ export function AuthProvider({ children }) {
       setLoading(true);
       const { error } = await signOut();
       if (error) throw error;
+      setUser(null);
+      setProfile(null);
     } catch (error) {
-      console.error("Error during logout:", error);
+      console.error("Logout error:", error);
       setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Show spinner only during initial load
+  // Only show spinner for initial load
   if (loading && !user && !profile) {
     return <Spinner />;
   }
@@ -103,6 +115,8 @@ export function AuthProvider({ children }) {
     logout,
     isAuthenticated: !!user,
   };
+
+  console.log("Current auth state:", value);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
