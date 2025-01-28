@@ -2,7 +2,8 @@
 import { useNavigate } from "react-router-dom";
 import styles from "./PageNav.module.css";
 import { useAuth } from "../contexts/AuthContext";
-
+import Logo from "./Logo";
+import Button from "./Button";
 function PageNav() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -10,19 +11,15 @@ function PageNav() {
   return (
     <nav className={styles.nav}>
       <div className={styles.logoContainer}>
-        <img
-          src="/logo.png" // Direct reference to public folder
-          alt="DriftDiaries"
-          className={styles.logo}
-        />
+        <Logo />
       </div>
 
-      <button
+      <Button
         onClick={() => navigate(isAuthenticated ? "/app/cities" : "/login")}
-        className={styles.button}
+        type="primary"
       >
         {isAuthenticated ? "Go to App" : "Login"}
-      </button>
+      </Button>
     </nav>
   );
 }
