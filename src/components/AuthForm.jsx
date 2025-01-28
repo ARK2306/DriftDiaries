@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import styled from "styled-components";
-import Message from "./Message";
+import { Eye, EyeOff } from "lucide-react";
 
 const AuthForm = () => {
   const [email, setEmail] = useState("");
