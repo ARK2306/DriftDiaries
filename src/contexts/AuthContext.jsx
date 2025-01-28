@@ -1,35 +1,43 @@
 // src/contexts/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { signOut } from "../lib/supabaseAuth";
 import Spinner from "../components/Spinner";
 
 const AuthContext = createContext({});
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    // Try to get session from localStorage
-    const persistedSession = localStorage.getItem(
-      "sb-uqpzvnyzkgfxdqqeirus-auth-token"
-    );
-    if (persistedSession) {
-      try {
-        const parsedSession = JSON.parse(persistedSession);
-        return parsedSession.user || null;
-      } catch (error) {
-        console.error("Error parsing stored session:", error);
-        return null;
-      }
-    }
-    return null;
-  });
+  const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(!user); // Only show loading if no initial user
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  async function fetchProfile(userId) {
-    if (!userId) return null;
+  useEffect(() => {
+    // Initial session check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      }
+      setLoading(false);
+    });
 
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function fetchProfile(userId) {
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -38,61 +46,27 @@ export function AuthProvider({ children }) {
         .single();
 
       if (error) throw error;
-      return data;
+      setProfile(data);
     } catch (error) {
       console.error("Error fetching profile:", error);
-      return null;
     }
   }
 
-  // Load initial profile if we have a user
-  useEffect(() => {
-    if (user && !profile) {
-      fetchProfile(user.id).then((data) => setProfile(data));
-    }
-  }, [user]);
-
-  useEffect(() => {
-    // Set up auth state change listener
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event, session?.user?.id);
-
-      if (session?.user) {
-        setUser(session.user);
-        const profileData = await fetchProfile(session.user.id);
-        setProfile(profileData);
-      } else {
-        setUser(null);
-        setProfile(null);
-      }
-      setLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const logout = async () => {
+  async function logout() {
     try {
       setLoading(true);
-      const { error } = await signOut();
+      const { error } = await supabase.auth.signOut();
       if (error) throw error;
-
       setUser(null);
       setProfile(null);
     } catch (error) {
       console.error("Error during logout:", error);
-      setError(error.message);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  // Only show spinner if we're loading and don't have a user yet
-  if (loading && !user) {
+  if (loading) {
     return <Spinner />;
   }
 

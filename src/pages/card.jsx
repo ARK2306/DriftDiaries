@@ -24,8 +24,6 @@ const StyledWrapper = styled.div`
     flex-direction: column;
     isolation: isolate;
     position: relative;
-    width: 18rem;
-    height: 8rem;
     background: #29292c;
     border-radius: 1rem;
     overflow: hidden;
