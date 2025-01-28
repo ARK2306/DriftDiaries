@@ -42,7 +42,9 @@ function City() {
       </div>
 
       <div>
-        <p className="text-gray-500 text-sm mb-5">Photo Stories</p>
+        <p className="text-gray-500 text-sm mb-5">
+          Photo Stories (Hover over the photo for story){" "}
+        </p>
         <br />
         <div className="flex flex-wrap gap-6">
           {photo_stories?.map((story, index) => (

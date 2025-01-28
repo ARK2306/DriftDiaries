@@ -5,6 +5,21 @@
   min-height: calc(100vh - 5rem);
 }
 
+.container {
+  max-width: 120rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .login {
+    margin: 1.5rem;
+    padding: 1.5rem 2rem;
+  }
+}
 .form {
   background-color: var(--color-dark--2);
   border-radius: 7px;

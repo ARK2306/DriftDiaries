@@ -1,15 +1,18 @@
 import PageNav from "../components/PageNav";
-import styles from "./Login.module.css";
-
 import AuthForm from "../components/AuthForm";
-import Card from "./card";
+import WelcomeCard from "./WelcomeCard";
+import styles from "./LoginPage.module.css";
 
-export default function Login() {
+const Login = () => {
   return (
     <main className={styles.login}>
       <PageNav />
-      <Card />
-      <AuthForm />
+      <div className={styles.container}>
+        <WelcomeCard />
+        <AuthForm />
+      </div>
     </main>
   );
-}
+};
+
+export default Login;

@@ -208,7 +208,7 @@ function Form() {
                     </span>
                     {currentStory.length === 0 ? (
                       <Button type="disabled" disabled>
-                        Add you story
+                        Story Cannot be empty!!
                       </Button>
                     ) : (
                       <Button
