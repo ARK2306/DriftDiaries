@@ -200,7 +200,7 @@ const StyledWrapper = styled.div`
   }
 
   .title p {
-    font-size: 10px;
+    font-size: 11.5px;
     text-align: justify;
     margin: 0;
     padding: 0;

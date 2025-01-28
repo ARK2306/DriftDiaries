@@ -197,14 +197,14 @@ function Form() {
                       const value = e.target.value;
                       if (value.length <= 300) setCurrentStory(value);
                     }}
-                    placeholder="Write your story about this photo (Max 300 characters)"
+                    placeholder="Write your story about this photo (Max 250 characters)"
                     className="w-full p-2 rounded bg-gray-100 text-gray-800 resize-none"
                     rows={4}
-                    maxLength={300}
+                    maxLength={250}
                   />
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-sm text-gray-500">
-                      {300 - currentStory.length} characters remaining
+                      {250 - currentStory.length} characters remaining
                     </span>
                     {currentStory.length === 0 ? (
                       <Button type="disabled" disabled>
