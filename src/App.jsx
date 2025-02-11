@@ -13,6 +13,7 @@ import Signup from "./pages/Signup";
 import { CitiesProvider } from "./contexts/CitiesContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./pages/ProtectedRoute";
+import { Analytics } from "@vercel/analytics/react";
 
 function App() {
   return (
@@ -45,6 +46,7 @@ function App() {
           </BrowserRouter>
         </CitiesProvider>
       </AuthProvider>
+      <Analytics />
     </div>
   );
 }
